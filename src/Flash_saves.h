@@ -12,6 +12,8 @@
 #define FLASH_NVM_MOTION_ADDR (FLASH_NVM_BASE_ADDR + 0x100) // 1x256B
 #define FLASH_NVM_AMS_ADDR    (FLASH_NVM_BASE_ADDR + 0x200) // 4x256B (0..3) => do +0x5FF
 
+#define FLASH_NVM_CFG_ADDR    (FLASH_NVM_BASE_ADDR + 0xF00)  // page 15: device config
+
 #define FLASH_NVM256_PAGE_SIZE (256u)
 #define FLASH_NVM_TOTAL_SIZE    (4096u)
 #define FLASH_NVM_PAGE_COUNT    (FLASH_NVM_TOTAL_SIZE / FLASH_NVM256_PAGE_SIZE)
@@ -22,6 +24,7 @@ static constexpr uint32_t MAGIC_FIL = 0x314C4946u; // 'FIL1'
 static constexpr uint32_t MAGIC_CAL = 0x324C4143u; // 'CAL2'
 static constexpr uint32_t MAGIC_MOT = 0x31544F4Du; // 'MOT1'
 static constexpr uint32_t MAGIC_STA = 0x31415453u; // 'STA1'
+static constexpr uint32_t MAGIC_CFG = 0x31474643u;  // 'CFG1'
 static constexpr uint16_t VER_1     = 0x0001u;
 
 struct __attribute__((packed, aligned(4))) NVM256_HDR
@@ -64,3 +67,8 @@ bool Flash_NVM_full_clear(void);
 bool Flash_Motion_read(void* out, uint16_t bytes);
 bool Flash_Motion_write(const void* in, uint16_t bytes);
 bool Flash_Motion_clear(void);
+
+// ── CFG page: AMS slot (auto-enum) ──────────────────────────────────────────
+bool Flash_AMS_num_read (uint8_t* ams_num); // returns true + fills *ams_num
+bool Flash_AMS_num_write(uint8_t  ams_num); // persist assigned slot 0-3
+bool Flash_AMS_num_clear(void);             // erase → force re-enum on next boot

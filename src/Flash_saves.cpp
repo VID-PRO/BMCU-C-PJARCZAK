@@ -232,7 +232,7 @@ static void fil_cache_load_one(uint8_t filament_idx)
 
 static constexpr uint32_t STA_TAG = 0xA5u;
 static constexpr uint32_t STA_PAGE_FIRST = 6u;
-static constexpr uint32_t STA_PAGE_COUNT = 10u;
+static constexpr uint32_t STA_PAGE_COUNT = 9u;  // pages 6..14; page 15 reserved for CFG
 static constexpr uint32_t STA_SLOT_BYTES = 8u;
 static constexpr uint32_t STA_SLOTS_PER_PAGE = (FLASH_NVM256_PAGE_SIZE / STA_SLOT_BYTES);
 static constexpr uint32_t STA_TOTAL_SLOTS = (STA_PAGE_COUNT * STA_SLOTS_PER_PAGE);
@@ -496,3 +496,30 @@ bool Flash_Motion_clear(void)
 {
     return flash256_erase(FLASH_NVM_MOTION_ADDR);
 }
+
+// ── CFG page: AMS slot number (auto-enum) ────────────────────────────────────
+struct alignas(4) CFG_payload { uint8_t ams_num; uint8_t reserved[3]; };
+
+bool Flash_AMS_num_read(uint8_t* ams_num)
+{
+    if (!ams_num) return false;
+    CFG_payload p{};
+    uint16_t got = 0u;
+    if (!nvm256_read(FLASH_NVM_CFG_ADDR, MAGIC_CFG, VER_1, &p, sizeof(p), &got, nullptr))
+        return false;
+    if (got < 1u || p.ams_num >= 4u) return false;
+    *ams_num = p.ams_num;
+    return true;
+}
+
+bool Flash_AMS_num_write(uint8_t ams_num)
+{
+    if (ams_num >= 4u) return false;
+    uint8_t cur = 0xFF;
+    if (Flash_AMS_num_read(&cur) && cur == ams_num) return true; // already saved
+    CFG_payload p{}; p.ams_num = ams_num;
+    return nvm256_write(FLASH_NVM_CFG_ADDR, MAGIC_CFG, VER_1, 0u, &p, sizeof(p));
+}
+
+bool Flash_AMS_num_clear(void) { return flash256_erase(FLASH_NVM_CFG_ADDR); }
+

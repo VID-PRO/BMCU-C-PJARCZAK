@@ -39,13 +39,17 @@ extern bool    filament_channel_inserted[4];
 #endif
 
 #ifndef motion_control_ams_num
+#if BAMBU_BUS_AMS_NUM == 0xFF
+#define motion_control_ams_num 0  // auto-enum: physical position is always slot 0
+#else
 #define motion_control_ams_num BAMBU_BUS_AMS_NUM
+#endif
 #endif
 
 #ifndef motion_control_pull_back_distance
 #define motion_control_pull_back_distance AMS_RETRACT_LEN
 #endif
 
-#if (BAMBU_BUS_AMS_NUM < 0) || (BAMBU_BUS_AMS_NUM > 3)
+#if (BAMBU_BUS_AMS_NUM != 0xFF) && ((BAMBU_BUS_AMS_NUM < 0) || (BAMBU_BUS_AMS_NUM > 3))
 #error "BAMBU_BUS_AMS_NUM must be in range 0..3"
 #endif

@@ -1,3 +1,4 @@
+#include "bambu_bus_ams.h"
 #include "ahub_bus.h"
 
 #include <string.h>
@@ -70,7 +71,16 @@ void ahubus_slave_get_package_heartbeat(uint8_t *buf)
     {
         if (ams[i].online == true)
         {
-            EQPT_data_ptr[0] = i << 2;
+            // ams[i] is the data store (always ams[0] in auto-enum builds).
+            // The bus slot that maps to this data index may differ from i.
+            // Reverse-lookup: find slot s where bambubus_ams_map[s] == i.
+            // Falls back to i itself for fixed-slot builds where map[i] == i.
+            uint8_t bus_slot = i;
+            for (uint8_t s = 0; s < ams_max_number; s++)
+            {
+                if (bambubus_ams_map[s] == i) { bus_slot = s; break; }
+            }
+            EQPT_data_ptr[0] = bus_slot << 2;
             EQPT_data_ptr[1] = ams[i].ams_type;
             EQPT_data_ptr += 2;
             ahubus_ams_numbers++;
@@ -155,6 +165,14 @@ void ahubus_slave_get_package_query(uint8_t *buf)
     query_adr = (uint8_t)(query_adr >> 4);
 #endif
 
+    // Remap bus-slot → ams[] data index.
+    // bambubus_ams_map[our_slot] = 0 (ams[0] is always the data store).
+    // bambubus_ams_map[any other slot] = 0xFF → returns early below.
+    // This prevents the BMCU from responding to queries aimed at other
+    // bus slots (e.g. slot 0 = original Bambu AMS) and ensures data is
+    // always served from ams[0] regardless of the runtime bus slot.
+    query_adr = (query_adr < ams_max_number) ? bambubus_ams_map[query_adr] : 0xFFu;
+
     if (query_type != ahubus_query_type::all_filament_stu)
     {
         if (query_adr >= ams_max_number) return;
@@ -207,10 +225,17 @@ void ahubus_slave_get_package_query(uint8_t *buf)
         {
             if (!ams[i].online) continue;
 
+            // Reverse-lookup bus slot for this data index (same as heartbeat).
+            uint8_t bus_slot = i;
+            for (uint8_t s = 0; s < ams_max_number; s++)
+            {
+                if (bambubus_ams_map[s] == i) { bus_slot = s; break; }
+            }
+
 #ifdef xMCU
-            ams_filament_data_ptr[0] = (uint8_t)(i << 4);
+            ams_filament_data_ptr[0] = (uint8_t)(bus_slot << 4);
 #else
-            ams_filament_data_ptr[0] = i;
+            ams_filament_data_ptr[0] = bus_slot;
 #endif
             ams_filament_data_ptr[1] = ams[i].online;
 
@@ -303,7 +328,7 @@ void ahubus_slave_get_package_set(uint8_t *buf)
         if (filament_channel >= 4) return;
         memcpy(&(ams[set_adr].filament[filament_channel].bambubus_filament_id), data_ptr + 4, 44);
 
-        if (set_adr == (uint8_t)BAMBU_BUS_AMS_NUM)
+        if (set_adr == bambubus_get_ams_num())
             ams_datas_set_need_to_save_filament(filament_channel);
 
         break;

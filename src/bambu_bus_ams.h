@@ -25,3 +25,12 @@ enum class bambubus_package_type
 void bambubus_init(void);
 void bambubus_heartbeat_seen_fast(void);
 extern bambubus_package_type bambubus_run();
+
+// Runtime AMS slot helpers
+uint8_t bambubus_get_ams_num(void);    // current bus slot 0-3
+bool    bambubus_is_registered(void);  // true once printer confirmed our slot
+
+// Map from bus-slot (0-3) to ams[] data index (0 = data store, 0xFF = not ours).
+// Populated by bambubus_init(). Used by ahub_bus query handler to remap incoming
+// slot addresses and ignore packets intended for other devices (e.g. original AMS).
+extern uint8_t bambubus_ams_map[4];
